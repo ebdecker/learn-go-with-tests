@@ -1,5 +1,5 @@
 # Learn Go With Tests
-The following are the notes I captured while going thru the excellent book [Learn Go with Tests](https://quii.gitbook.io/learn-go-with-tests). I stated this book as a way to refresh on Go and get back into a true TDD flow. This book accomplishes both. A lot of my notes below are taken like I was capturing notes during a lecture so some are direct copy and paste from the book. However, I summarize each chapter in my own words for future reflection and to make sure I understood the key points and concepts of each subject.
+This repo is the code and notes I captured while going thru the excellent book [Learn Go with Tests](https://quii.gitbook.io/learn-go-with-tests). I stated this book as a way to refresh on Go and get back into a true TDD flow. This book accomplishes both. A lot of my notes below are taken like I was capturing notes during a lecture so some are direct copy and paste from the book. However, I summarize each chapter in my own words for future reflection and to make sure I understood the key points and concepts of each subject.
 
 tags: [[golang]] #programming  #softwareengineering #tech 
 
