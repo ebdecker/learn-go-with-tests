@@ -815,3 +815,180 @@ This chapter covered a great use case on why you have to worry about using value
 The chapter also introduced `go vet` which is a handy way to check if you have suspicious code that could introduce errors like the scenario above with public unlocking and locking and by copying the mutex of an object from one place another. 
 
 ---
+### Context
+From the [Go Blog: Context](https://blog.golang.org/context)
+
+> The context package provides functions to derive new Context values from existing ones. These values form a tree: when a Context is canceled, all Contexts derived from it are also canceled.
+
+
+#### Channel Buffers
+`data := make(chan string, 1)`
+The argument `1` in the `make(chan string, 1)` command specifies the **buffer size** of the channel. In Go, channels can be either **unbuffered** or **buffered**.
+
+- **Unbuffered channels**: These require both the sender and the receiver to be ready at the same time. The communication only happens when both ends are synchronized.
+    
+- **Buffered channels**: These allow the sender to send a certain number of values to the channel without waiting for a receiver to be ready. The buffer size defines how many values can be sent before the sender has to wait for the receiver.
+- You can send one value to the channel without needing an immediate receiver.
+- After the first value is in the channel, further sends will block until the value is received from the channel.
+
+So, this channel can temporarily store one string, providing a small amount of asynchronous behavior.
+
+--- 
+
+
+One of the main points of `context` is that it is a consistent way of offering cancellation.
+
+[From the go doc](https://golang.org/pkg/context/)
+
+> Incoming requests to a server should create a Context, and outgoing calls to servers should accept a Context. The chain of function calls between them must propagate the Context, optionally replacing it with a derived Context created using WithCancel, WithDeadline, WithTimeout, or WithValue. When a Context is canceled, all Contexts derived from it are also canceled.
+
+From the [Go Blog: Context](https://blog.golang.org/context) again:
+
+> At Google, we require that Go programmers pass a Context parameter as the first argument to every function on the call path between incoming and outgoing requests. This allows Go code developed by many different teams to interoperate well. It provides simple control over timeouts and cancelation and ensures that critical values like security credentials transit Go programs properly.
+
+
+- The [Go blog further describes the motivation for working with `context` and has some examples](https://blog.golang.org/context)
+
+
+What was covered in this section:
+- How to test a HTTP handler that has had the request cancelled by the client.
+    
+- How to use context to manage cancellation.
+    
+- How to write a function that accepts `context` and uses it to cancel itself by using goroutines, `select` and channels.
+    
+- Follow Google's guidelines as to how to manage cancellation by propagating request scoped context through your call-stack.
+    
+- How to roll your own spy for `http.ResponseWriter` if you need it.
+
+Example code for the points above:
+```erlang
+func Server(store Store) http.HandlerFunc {
+
+    return func(w http.ResponseWriter, r *http.Request) {
+
+        data, err := store.Fetch(r.Context())
+
+  
+
+        if err != nil {
+
+            return // todo: log error however you like
+
+        }
+
+  
+
+        fmt.Fprint(w, data)
+
+    }
+
+}
+
+// test showing how the context should be handled
+type SpyStore struct {
+
+    response string
+
+    t        *testing.T
+
+}
+
+  
+
+func (s *SpyStore) Fetch(ctx context.Context) (string, error) {
+
+    data := make(chan string, 1)
+
+  
+
+    go func() {
+
+        var result string
+
+        for _, c := range s.response {
+
+            select {
+
+            case <-ctx.Done():
+
+                log.Println("spy store got cancelled")
+
+                return
+
+            default:
+
+                time.Sleep(10 * time.Millisecond)
+
+                result += string(c)
+
+            }
+
+        }
+
+        data <- result
+
+    }()
+
+  
+
+    select {
+
+    case <-ctx.Done():
+
+        return "", ctx.Err()
+
+    case res := <-data:
+
+        return res, nil
+
+    }
+
+}
+t.Run("tells store to cancel work if request is cancelled", func(t *testing.T) {
+
+        data := "hello, world"
+
+        store := &SpyStore{response: data, t: t}
+
+        svr := Server(store)
+
+  
+
+        request := httptest.NewRequest(http.MethodGet, "/", nil)
+
+  
+
+        cancellingCtx, cancel := context.WithCancel(request.Context())
+
+        time.AfterFunc(5*time.Millisecond, cancel)
+
+        request = request.WithContext(cancellingCtx)
+
+  
+
+        response := &SpyResponseWriter{}
+
+  
+
+        svr.ServeHTTP(response, request)
+
+  
+
+        if response.written {
+
+            t.Error("a response should not have been written")
+
+        }
+
+    })
+
+```
+
+#### Summary / Thoughts
+
+Chapter introduced `context` and how every context can derive from a parent context. If you cancel a context in a chain, every context that derived from the cancelled context will cancel as well. This handles errors or cancellations on long running processes (think multiple http calls to external services that all depend on each other).
+
+The chapter does a good job explaining best practice on the correct ways to pass the context down the chain and assuming down the chain of each call, the context will be handled appropriately. Gave the example that at Google, every function on a call path requires a context parameter to be passed in. That will be my biggest takeaway here. Will likely have to reference the examples here when i need to implement this behavior in my own code until it becomes 2nd nature.
+
+---
