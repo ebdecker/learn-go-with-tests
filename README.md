@@ -992,3 +992,83 @@ Chapter introduced `context` and how every context can derive from a parent cont
 The chapter does a good job explaining best practice on the correct ways to pass the context down the chain and assuming down the chain of each call, the context will be handled appropriately. Gave the example that at Google, every function on a call path requires a context parameter to be passed in. That will be my biggest takeaway here. Will likely have to reference the examples here when i need to implement this behavior in my own code until it becomes 2nd nature.
 
 ---
+### Intro to Property Based Tests
+
+Going thru the [[Roman Numeral Kata]]
+
+Good refresher on using table based tests and a good use case for a generic struct
+```erlang
+func TestRomanNumerals(t *testing.T) {
+
+    cases := []struct {
+
+        Description string
+
+        Arabic      int
+
+        Want        string
+
+    }{
+
+        {"1 gets converted to I", 1, "I"},
+
+        {"2 gets converted to II", 2, "II"},
+
+    }
+
+  
+
+    for _, test := range cases {
+
+        t.Run(test.Description, func(t *testing.T) {
+
+            got := ConvertToRoman(test.Arabic)
+
+            if got != test.Want {
+
+                t.Errorf("got %q, want %q", got, test.Want)
+
+            }
+
+        })
+
+    }
+
+}
+```
+
+Good intro to property based tests in the text:
+	Property based tests help you do this by throwing random data at your code and verifying the rules you describe always hold true. A lot of people think property based tests are mainly about random data but they would be mistaken. The real challenge about property based tests is having a _good_ understanding of your domain so you can write these properties.
+
+1 way to use property based tests is thru the [testing/quick](https://golang.org/pkg/testing/quick/) package from the standard library
+
+```erlang
+func TestPropertiestOfConversion(t *testing.T) {
+
+    assertion := func(arabic int) bool {
+
+        roman := ConvertToRoman(arabic)
+
+        fromRoman := ConvertToArabic(roman)
+
+        return fromRoman == arabic
+
+    }
+
+  
+
+    if err := quick.Check(assertion, nil); err != nil {
+
+        t.Error("failed checks", err)
+
+    }
+
+}
+```
+
+The default number of runs `quick.Check` performs is 100 but you can change that with a config.
+
+#### Summary / Thoughts
+Covered how to solve the classic [[Roman Numeral Kata]] in go thru TDD. Good refresher on some common TDD components in Go like table based test as well as more good examples on using generic structs and functions. The end of the chapter introduced how you can use property based test which can be used if you understand your domain enough to test via random data. The author argues that if you don't understand your domain layer enough to write property based tests, this method can force you to understand it in order to write a good property test.
+
+---
